@@ -1,0 +1,39 @@
+import json
+from confluent_kafka import Consumer
+
+consumer = Consumer({
+    "bootstrap.servers": "localhost:9092",
+    "group.id": "fraud-detection-group",
+    "auto.offset.reset": "latest"
+})
+
+consumer.subscribe(["transactions"])
+
+print("Listening for live transactions...")
+
+try:
+    while True:
+        msg = consumer.poll(1.0)
+
+        if msg is None:
+            continue
+
+        if msg.error():
+            print("Error:", msg.error())
+            continue
+
+        data = json.loads(msg.value().decode("utf-8"))
+
+        user_id = data["user_id"]
+        amount = data["amount"]
+
+        print(f"User: {user_id} | Amount: ${amount}")
+
+        if amount > 1000:
+            print("WARNING: Suspicious transaction detected!")
+
+except KeyboardInterrupt:
+    print("Consumer stopped.")
+
+finally:
+    consumer.close()
